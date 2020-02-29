@@ -101,8 +101,6 @@ def handle_dialog(req, res):
             substages(user_id, req, res)
             return
         stage1(user_id, req, res)
-    elif sessionStorage[user_id]['stage'] == 2:
-        stage2(user_id, req, res)
     elif sessionStorage[user_id]['stage'] == 3:
         if 4 < sessionStorage[user_id]['substage']:
             edit_stages(user_id, req, res)
