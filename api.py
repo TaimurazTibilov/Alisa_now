@@ -84,8 +84,9 @@ def handle_dialog(req, res):
         res['response']['buttons'] = stage0_buttons
         return
 
-    if handle_exit(user_id, req, res):
-        return
+    if sessionStorage[user_id]['substage'] == 0:
+        if handle_exit(user_id, req, res):
+            return
 
     if sessionStorage[user_id]['stage'] == 0:
         stage0(user_id, req, res)
