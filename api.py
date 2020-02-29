@@ -220,7 +220,7 @@ def stage1(user_id, req, res):
         num = len(sessionStorage[user_id]['deadlines'])
         res['response']['text'] = f'У вас запланировано {num} дедлайнов. \n'
         for dl in sessionStorage[user_id]['deadlines']:
-            res['response']['text'] += func.return_deadline(dl)
+            res['response']['text'] += dl['id'] + '\n' + func.return_deadline(dl)
         res['response']['buttons'] = manage_buttons
         sessionStorage[user_id]['stage'] = 3
         return
@@ -372,7 +372,7 @@ def parse_int(entities):
 
 def find_by_id(i, user_id):
     for dl in sessionStorage[user_id]['deadlines']:
-        if dl[id] == i:
+        if dl['id'] == i:
             return dl
     return None
 
