@@ -329,7 +329,7 @@ def stage3(user_id, req, res):
         'изменить',
     ]:
         sessionStorage[user_id]['substage'] = 6
-        res['response']['text'] = 'Какой дедлайн вы хотели бы удалить?'
+        res['response']['text'] = 'Какой дедлайн вы хотели бы изменить?'
 
     elif req['request']['original_utterance'].lower() in [
         'не',
@@ -342,7 +342,7 @@ def stage3(user_id, req, res):
         res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
         res['response']['buttons'] = stage1_buttons
     else:
-        res['response']['text'] = 'Я вас не понимаю. Вы хотите внести изменения?'
+        res['response']['text'] = 'Что вы хотите сделать?'
 
 
 edit_buttons = [
@@ -441,7 +441,7 @@ def edit_stages(user_id, req, res):
             return
 
     elif sessionStorage[user_id]['substage'] == 8:
-        data = find_by_id(loc_id, user_id)
+        data = sessionStorage[user_id]['deadlines'][loc_id - 1]
         data['name'] = req['request']['original_utterance']
         sessionStorage[user_id]['substage'] = 0
         sessionStorage[user_id]['stage'] = 1
@@ -450,7 +450,7 @@ def edit_stages(user_id, req, res):
         res['response']['buttons'] = stage1_buttons
 
     elif sessionStorage[user_id]['substage'] == 9:
-        data = find_by_id(loc_id, user_id)
+        data = sessionStorage[user_id]['deadlines'][loc_id - 1]
         date = try_parse_date(req['request']['nlu']['entities'])
         if date is not None:
             data['date'] = date
@@ -473,7 +473,7 @@ def edit_stages(user_id, req, res):
             ]
 
     elif sessionStorage[user_id]['substage'] == 10:
-        data = find_by_id(loc_id, user_id)
+        data = sessionStorage[user_id]['deadlines'][loc_id - 1]
         if req['request']['original_utterance'].lower() in [
             'низкий',
             'маленький'
