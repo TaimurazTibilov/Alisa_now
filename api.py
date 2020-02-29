@@ -84,6 +84,9 @@ def handle_dialog(req, res):
         res['response']['buttons'] = stage0_buttons
         return
 
+    if handle_help(user_id, req, res):
+        return
+
     if sessionStorage[user_id]['substage'] == 0:
         if handle_exit(user_id, req, res):
             return
@@ -117,6 +120,20 @@ def handle_exit(user_id, req, res):
     return False
 
 
+def handle_help(user_id, req, res):
+    if req['request']['original_utterance'].lower() in [
+        'помощь',
+        'что ты умеешь?',
+        'что ты умеешь',
+    ]:
+        res['response'][
+            'text'] = 'Я могу запомнить твои дедлайны и напомнит тебе о них в будущем по почте.' \
+                      ' Пока я только умею сохранять их, но в будущем я стану умнее :)'
+        res['response']['end_session'] = True
+        return True
+    return False
+
+
 def stage0(user_id, req, res):
     # Обрабатываем ответ пользователя.
     if req['request']['original_utterance'].lower() in [
@@ -139,10 +156,10 @@ def stage0(user_id, req, res):
 
 stage1_buttons = \
     [
-        {
-            "title": "Текущие дедлайны",
-            "hide": True
-        },
+        # {
+        #     "title": "Текущие дедлайны",
+        #     "hide": True
+        # },
         {
             "title": "Добавить дедлайн",
             "hide": True
@@ -190,16 +207,16 @@ def stage1(user_id, req, res):
         return
 
     # Управление всеми дедлайнами
-    elif req['request']['original_utterance'].lower() in [
-        'покажи все дедлайны',
-        'текущие дедлайны',
-        'все дедлайны',
-    ]:
-        num = len(sessionStorage[user_id]['deadlines'])
-        res['response']['text'] = f'У вас запланировано {num} дедлайнов. На какой день вы хотите посмотреть дедлайны?'
-        res['response']['buttons'] = stage2_buttons
-        sessionStorage[user_id]['stage'] = 2
-        return
+    # elif req['request']['original_utterance'].lower() in [
+    #     'покажи все дедлайны',
+    #     'текущие дедлайны',
+    #     'все дедлайны',
+    # ]:
+    #     num = len(sessionStorage[user_id]['deadlines'])
+    #     res['response']['text'] = f'У вас запланировано {num} дедлайнов. На какой день вы хотите посмотреть дедлайны?'
+    #     res['response']['buttons'] = stage2_buttons
+    #     sessionStorage[user_id]['stage'] = 2
+    #     return
 
     # Добавление дедлайна
     elif req['request']['original_utterance'].lower() in [
