@@ -60,7 +60,7 @@ stage0_buttons = \
             "hide": True
         },
         {
-            "title": "Не сегодня",
+            "title": "Нет",
             "hide": True
         }
     ]
@@ -80,8 +80,8 @@ def handle_dialog(req, res):
             'user_id': user_id,
             'deadlines': []
         }
-        hello = 'Привет! Я твой ассистент дедлайнов. Здесь ты можешь \n ' \
-                'отслеживать текущие и закрытые дедлайны. \n Приступим?'
+        hello = 'Привет! Я твой ассистент дедлайнов. Здесь ты можешь ' \
+                'отслеживать текущие дедлайны. \n Приступим?'
         res['response']['text'] = hello
         res['response']['buttons'] = stage0_buttons
         return

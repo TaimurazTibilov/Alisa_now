@@ -10,7 +10,7 @@ def create_deadline(id, name, date, priority):
 
 def return_deadline(deadline):
     res = ''
-    res += 'Название: ' + deadline['name'] + '\n'
+    res += '\nНазвание: ' + deadline['name'] + '\n'
     res += 'Дата: ' + str(deadline['date']) + '\n'
     res += 'Приоритет: ' + deadline['priority'] + '\n'
     return res
