@@ -375,12 +375,12 @@ def edit_stages(user_id, req, res):
         if loc_id is not None:
             deldl = sessionStorage[user_id]['deadlines'][loc_id - 1]
             if deldl is None:
-                res['response']['test'] = 'Дедлайна с таким номером не существует.'
+                res['response']['text'] = 'Дедлайна с таким номером не существует.'
                 return
             sessionStorage[user_id]['deadlines'].remove(deldl)
             sessionStorage[user_id]['substage'] = 0
             sessionStorage[user_id]['stage'] = 1
-            res['response']['test'] = 'Дедлайн успешно удален. Чем могу вам помочь еще?'
+            res['response']['text'] = 'Дедлайн успешно удален. Чем могу вам помочь еще?'
             res['response']['buttons'] = stage1_buttons
             return
         else:
@@ -391,7 +391,7 @@ def edit_stages(user_id, req, res):
         if loc_id is not None:
             deldl = sessionStorage[user_id]['deadlines'][loc_id - 1]
             if deldl is None:
-                res['response']['test'] = 'Дедлайна с таким номером не существует.'
+                res['response']['text'] = 'Дедлайна с таким номером не существует.'
                 return
             res['response']['text'] = 'Что вы хотели бы изменить?'
             sessionStorage[user_id]['substage'] = 7
@@ -406,7 +406,7 @@ def edit_stages(user_id, req, res):
             'название'
         ]:
             sessionStorage[user_id]['substage'] = 8
-            res['response']['test'] = 'Введите новое имя'
+            res['response']['text'] = 'Введите новое имя'
             return
 
         elif req['request']['original_utterance'].lower() in [
@@ -414,7 +414,7 @@ def edit_stages(user_id, req, res):
             'время'
         ]:
             sessionStorage[user_id]['substage'] = 9
-            res['response']['test'] = 'Скажите новую дату'
+            res['response']['text'] = 'Скажите новую дату'
             res['response']['buttons'] = [
                 {
                     'title': 'Сегодня',
