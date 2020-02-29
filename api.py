@@ -25,6 +25,8 @@ buffer = {}
 # id дедлайнов
 id = 1
 
+loc_id = 0
+
 
 # Задаем параметры приложения Flask.
 @app.route("/", methods=['POST'])
@@ -94,13 +96,15 @@ def handle_dialog(req, res):
     if sessionStorage[user_id]['stage'] == 0:
         stage0(user_id, req, res)
     elif sessionStorage[user_id]['stage'] == 1:
-        if sessionStorage[user_id]['substage'] != 0:
+        if 0 < sessionStorage[user_id]['substage'] < 5:
             substages(user_id, req, res)
             return
         stage1(user_id, req, res)
     elif sessionStorage[user_id]['stage'] == 2:
         stage2(user_id, req, res)
     elif sessionStorage[user_id]['stage'] == 3:
+        if 4 < sessionStorage[user_id]['substage']:
+            edit_stages(user_id, req, res)
         stage3(user_id, req, res)
 
 
@@ -156,10 +160,10 @@ def stage0(user_id, req, res):
 
 stage1_buttons = \
     [
-        # {
-        #     "title": "Текущие дедлайны",
-        #     "hide": True
-        # },
+        {
+            "title": "Текущие дедлайны",
+            "hide": True
+        },
         {
             "title": "Добавить дедлайн",
             "hide": True
@@ -207,16 +211,16 @@ def stage1(user_id, req, res):
         return
 
     # Управление всеми дедлайнами
-    # elif req['request']['original_utterance'].lower() in [
-    #     'покажи все дедлайны',
-    #     'текущие дедлайны',
-    #     'все дедлайны',
-    # ]:
-    #     num = len(sessionStorage[user_id]['deadlines'])
-    #     res['response']['text'] = f'У вас запланировано {num} дедлайнов. На какой день вы хотите посмотреть дедлайны?'
-    #     res['response']['buttons'] = stage2_buttons
-    #     sessionStorage[user_id]['stage'] = 2
-    #     return
+    elif req['request']['original_utterance'].lower() in [
+        'покажи все дедлайны',
+        'текущие дедлайны',
+        'все дедлайны',
+    ]:
+        num = len(sessionStorage[user_id]['deadlines'])
+        res['response']['text'] = f'У вас запланировано {num} дедлайнов. На какой день вы хотите посмотреть дедлайны?'
+        res['response']['buttons'] = stage2_buttons
+        sessionStorage[user_id]['stage'] = 2
+        return
 
     # Добавление дедлайна
     elif req['request']['original_utterance'].lower() in [
@@ -227,7 +231,9 @@ def stage1(user_id, req, res):
         'создать новый дедлайн',
         'добавить новый дедлайн'
     ]:
-        buffer[id] = {}
+        buffer[id] = {
+            'id': id
+        }
         res['response']['text'] = f'Отлично! Начнем с названия. Какое название добавим?'
         sessionStorage[user_id]['substage'] = 1
         return
@@ -251,35 +257,254 @@ stage2_buttons = \
         }
     ]
 
+manage_buttons = [
+    {
+        "title": "Изменить",
+        "hide": True
+    },
+    {
+        "title": "Удалить",
+        "hide": True
+    },
+    {
+        "title": "Назад",
+        "hide": True
+    }
+]
+
 
 def stage2(user_id, req, res):
-    if req['request']['original_utterance'].lower() in [
-        'сегодня',
-        'а сегодня',
-        'на сегодня'
-    ]:
-        res['response']['text'] = ''
-        res['response']['buttons'] = stage2_buttons[-2:]
-        return
-    if req['request']['original_utterance'].lower() in [
-        'завтра',
-        'а завтра',
-        'на завтра',
-    ]:
-        res['response']['text'] = 'Поздравляю. Пар на завтра нет.'
-        res['response']['buttons'] = [stage2_buttons[0], stage2_buttons[2]]
-        return
-    if req['request']['original_utterance'].lower() in [
-        'на неделю',
-        'а на неделю',
-    ]:
-        res['response']['text'] = 'Поздравляю. Пар на неделю нет.'
-        res['response']['buttons'] = stage2_buttons[:2]
+    date = try_parse_date(req['request']['nlu']['entities'])
+    if date is not None:
+        deadlines = []
+        for dl in sessionStorage[user_id]['deadlines']:
+            if dl['date'] <= date:
+                deadlines.append(dl)
+        if len(deadlines) == 0:
+            res['response']['text'] = 'У вас еще нет дедлайнов, которые вы могли бы закрыть'
+            sessionStorage[user_id]['stage'] = 0
+            res['response']['buttons'] = back_button
+            return
+        result = 'Вот все дедлайны, которые вам нужно сделать до ' + str(date) + '\n'
+        for dl in deadlines:
+            result += dl['id'] + '\n'
+            result += func.return_deadline(dl)
+        sessionStorage[user_id]['stage'] = 3
+        res['response']['text'] = result + '\nХотите что-то изменить или удалить?'
+        res['response']['buttons'] = manage_buttons
         return
 
-    res['response']['text'] = 'Я вас не поняла. На какие даты показать расписание?'
+    res['response']['text'] = 'Я вас не поняла. На какую дату хотите увидеть расписание?'
     res['response']['buttons'] = stage2_buttons
     return
+
+
+def stage3(user_id, req, res):
+    if req['request']['original_utterance'].lower() in [
+        'не',
+        'нет',
+        'нет спасибо',
+        'не хочу',
+        'назад',
+    ]:
+        sessionStorage[user_id]['stage'] = 1
+        res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
+        res['response']['buttons'] = stage1_buttons
+
+    elif req['request']['original_utterance'].lower() in [
+        'удали',
+        'удалить',
+        'убери',
+        'убрать',
+    ]:
+        sessionStorage[user_id]['substage'] = 5
+        res['response']['text'] = 'Какой дедлайн вы хотели бы удалить?'
+
+    elif req['request']['original_utterance'].lower() in [
+        'измени',
+        'поменяй',
+        'отредактируй',
+        'изменить',
+    ]:
+        sessionStorage[user_id]['substage'] = 6
+        res['response']['text'] = 'Какой дедлайн вы хотели бы удалить?'
+
+    elif req['request']['original_utterance'].lower() in [
+        'не',
+        'нет',
+        'нет спасибо',
+        'не хочу',
+        'назад',
+    ]:
+        sessionStorage[user_id]['stage'] = 1
+        res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
+        res['response']['buttons'] = stage1_buttons
+    else:
+        res['response']['text'] = 'Я вас не понимаю. Вы хотите внести изменения?'
+
+
+edit_buttons = [
+    {
+        "title": "Имя",
+        "hide": True
+    },
+    {
+        "title": "Дату",
+        "hide": True
+    },
+    {
+        "title": "Приоритет",
+        "hide": True
+    }
+]
+
+
+def parse_int(entities):
+    data = None
+    for i in entities:
+        if i["type"] == "YANDEX.NUMBER":
+            data = i["value"]
+    return data
+
+
+def find_by_id(i, user_id):
+    for dl in sessionStorage[user_id]['deadlines']:
+        if dl[id] == i:
+            return dl
+    return None
+
+
+def edit_stages(user_id, req, res):
+    global loc_id
+    if sessionStorage[user_id]['substage'] == 5:
+        loc_id = parse_int(req['request']['nlu']['entities'])
+        if loc_id is not None:
+            deldl = find_by_id(loc_id, user_id)
+            if deldl is None:
+                res['response']['test'] = 'Дедлайна с таким номером не существует.'
+                return
+            sessionStorage[user_id]['deadlines'].remove(deldl)
+            sessionStorage[user_id]['substage'] = 0
+            sessionStorage[user_id]['stage'] = 1
+            res['response']['test'] = 'Дедлайн успешно удален. Чем могу вам помочь еще?'
+            res['response']['buttons'] = stage1_buttons
+            return
+        else:
+            res['response']['text'] = 'Я вас не понимаю. Попробуйте еще.'
+            return
+    elif sessionStorage[user_id]['substage'] == 6:
+        loc_id = parse_int(req['request']['nlu']['entities'])
+        if loc_id is not None:
+            deldl = find_by_id(loc_id, user_id)
+            if deldl is None:
+                res['response']['test'] = 'Дедлайна с таким номером не существует.'
+                return
+            res['response']['test'] = 'Что вы хотели бы изменить?'
+            sessionStorage[user_id]['substage'] = 7
+            res['response']['buttons'] = edit_buttons
+            return
+        res['response']['text'] = 'Я вас не понимаю. Попробуйте еще.'
+        return
+
+    elif sessionStorage[user_id]['substage'] == 7:
+        if req['request']['original_utterance'].lower() in [
+            'имя',
+            'название'
+        ]:
+            sessionStorage[user_id]['substage'] = 8
+            res['response']['test'] = 'Введите новое имя'
+            return
+
+        elif req['request']['original_utterance'].lower() in [
+            'дату',
+            'время'
+        ]:
+            sessionStorage[user_id]['substage'] = 9
+            res['response']['test'] = 'Скажите новую дату'
+            res['response']['buttons'] = [
+                {
+                    'title': 'Сегодня',
+                    'hide': True
+                },
+                {
+                    'title': 'Завтра',
+                    'hide': True
+                }
+            ]
+            return
+
+        elif req['request']['original_utterance'].lower() in [
+            'приоритет',
+            'значимость'
+        ]:
+            sessionStorage[user_id]['substage'] = 10
+            res['response']['text'] = 'Назовите или выберите новый приоритет'
+            res['response']['buttons'] = priotity_buttons
+            return
+        else:
+            res['response']['text'] = 'Я вас не понимаю. Попробуйте еще.'
+            return
+
+    elif sessionStorage[user_id]['substage'] == 8:
+        data = find_by_id(loc_id, user_id)
+        data['name'] = req['request']['original_utterance']
+        sessionStorage[user_id]['substage'] = 0
+        sessionStorage[user_id]['stage'] = 1
+
+        res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
+        res['response']['buttons'] = stage1_buttons
+
+    elif sessionStorage[user_id]['substage'] == 9:
+        data = find_by_id(loc_id, user_id)
+        date = try_parse_date(req['request']['nlu']['entities'])
+        if date is not None:
+            data['date'] = date
+            sessionStorage[user_id]['substage'] = 0
+            sessionStorage[user_id]['stage'] = 1
+
+            res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
+            res['response']['buttons'] = stage1_buttons
+        else:
+            res['response']['text'] = 'Я вас не понимаю'
+            res['response']['buttons'] = [
+                {
+                    'title': 'Сегодня',
+                    'hide': True
+                },
+                {
+                    'title': 'Завтра',
+                    'hide': True
+                }
+            ]
+
+    elif sessionStorage[user_id]['substage'] == 10:
+        data = find_by_id(loc_id, user_id)
+        if req['request']['original_utterance'].lower() in [
+            'низкий',
+            'маленький'
+        ]:
+            data['priority'] = 'Низкий'
+        elif req['request']['original_utterance'].lower() in [
+            'средний',
+            'обычный'
+        ]:
+            data['priority'] = 'Средний'
+        elif req['request']['original_utterance'].lower() in [
+            'важный',
+            'большой',
+            'высокий'
+        ]:
+            data['priority'] = 'Высокий'
+        else:
+            res['response']['text'] = 'Я вас не понимаю'
+            res['response']['buttons'] = priotity_buttons
+            return
+        sessionStorage[user_id]['substage'] = 0
+        sessionStorage[user_id]['stage'] = 1
+
+        res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
+        res['response']['buttons'] = stage1_buttons
+        return
 
 
 priotity_buttons = [
@@ -297,7 +522,6 @@ priotity_buttons = [
     },
 ]
 
-
 choice_buttons = [
     {
         'title': 'Да',
@@ -311,7 +535,6 @@ choice_buttons = [
 
 
 def substages(user_id, req, res):
-
     global id
     if sessionStorage[user_id]['substage'] == 1:
         buffer[id]['name'] = req['request']['original_utterance']
@@ -339,7 +562,7 @@ def substages(user_id, req, res):
             return
 
     elif sessionStorage[user_id]['substage'] == 3:
-        if  req['request']['original_utterance'].lower() in [
+        if req['request']['original_utterance'].lower() in [
             'низкий',
             'маленький'
         ]:
@@ -396,7 +619,6 @@ def substages(user_id, req, res):
         sessionStorage[user_id]['stage'] = 1
         res['response']['buttons'] = stage1_buttons
         return
-
 
 
 def try_parse_date(entities):
@@ -467,7 +689,3 @@ def add_years(d, years):
                 isleap(d.year) and not isleap(new_year)):
             return d.replace(year=new_year, day=28)
         raise
-
-
-def stage3(user_id, req, res):
-    pass
