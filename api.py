@@ -220,7 +220,7 @@ def stage1(user_id, req, res):
         num = len(sessionStorage[user_id]['deadlines'])
         res['response']['text'] = f'У вас запланировано {num} дедлайнов. \n'
         for dl in sessionStorage[user_id]['deadlines']:
-            res['response']['text'] += dl['id'] + '\n' + func.return_deadline(dl)
+            res['response']['text'] += str(dl['id']) + '\n' + func.return_deadline(dl)
         res['response']['buttons'] = manage_buttons
         sessionStorage[user_id]['stage'] = 3
         return
