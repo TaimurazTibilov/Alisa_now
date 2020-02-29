@@ -2,6 +2,7 @@
 # Импортирует поддержку UTF-8.
 from __future__ import unicode_literals
 
+import util_func as func
 # Импортируем модули для работы с JSON и логами.
 import json
 import logging
@@ -16,6 +17,8 @@ logging.basicConfig(level=logging.DEBUG)
 # Хранилище данных о сессиях.
 sessionStorage = {}
 
+# id дедлайнов
+id = 0
 
 # Задаем параметры приложения Flask.
 @app.route("/", methods=['POST'])
@@ -63,9 +66,12 @@ def handle_dialog(req, res):
         # Инициализируем сессию и поприветствуем его.
 
         sessionStorage[user_id] = {
-            'stage': 0
+            'stage': 0,
+            'user_id': user_id,
+            'deadlines': []
         }
-        hello = 'Привет! Я могу рассказать о твоем расписании занятий в Высшей Школе Экономики. \n Но сначала нам нужно познакомиться.'
+        hello = 'Привет! Я твой ассистент дедлайнов. Здесь ты можешь \n ' \
+                'отслеживать текущие и закрытые дедлайны. \n Приступим?'
         res['response']['text'] = hello
         res['response']['buttons'] = stage0_buttons
         return
@@ -89,8 +95,11 @@ def handle_exit(user_id, req, res):
         'нет',
         'не',
         'не сегодня',
+        'выход',
+        'завершить',
+        'закройя'
     ]:
-        res['response']['text'] = 'Жаль. Приходи еще.'
+        res['response']['text'] = 'Приходи еще! Хорошего дня!'
         res['response']['end_session'] = True
         return True
     return False
@@ -106,13 +115,18 @@ def stage0(user_id, req, res):
         'ага',
     ]:
         # Пользователь согласился, идем на стадию 1.
-        sessionStorage[user_id] = {
-            'stage': 1
-        }
-        res['response']['text'] = 'Для начала мне нужен твой E-mail, заканчивающийся на @edu.hse.ru'
+        sessionStorage[user_id]['stage'] = 1
+        res['response']['text'] = 'Чем могу вам помочь?'
+        res['response']['buttons'] = stage1_buttons
+        # if sessionStorage[user_id]['email']:
+        #     res['response']['buttons'] = [
+        #         {
+        #             "title": sessionStorage[user_id]['email'],
+        #             "hide": True,
+        #         }
+        #     ]
         return
 
-    # Если нет, то убеждаем его купить слона!
     res['response']['text'] = 'Я вас не поняла'
     res['response']['buttons'] = stage0_buttons
     return
@@ -121,32 +135,54 @@ def stage0(user_id, req, res):
 stage1_buttons = \
             [
                 {
-                    "title": "Сегодня",
+                    "title": "Текущие дедлайны",
                     "hide": True
                 },
                 {
-                    "title": "Завтра",
+                    "title": "Добавить дедлайн",
                     "hide": True
                 },
                 {
-                    "title": "На неделю",
+                    "title": "Смотреть ближайшие",
                     "hide": True
-                }
+                },
+                {
+                    "title": "Выход",
+                    "hide": True
+                },
             ]
 
+back_button = [
+    {
+        'title': 'Назад',
+        'hide': True
+    }
+]
 
+
+# Getting email from user
 def stage1(user_id, req, res):
-    email = req['request']['original_utterance'].lower()
-
-    if str(email).endswith("@edu.hse.ru"):  # todo check email is valid
-        sessionStorage[user_id] = {
-            'stage': 2,
-            'email': str(email)
-        }
-        res['response']['text'] = f"Ваш email: {email}. На какие даты показать расписание?"
-        res['response']['buttons'] = stage1_buttons
+    if req['request']['original_utterance'].lower() in [
+        'ближайшие',
+        'дедлайны',
+        'ближайшие дедлайны',
+        'покажи ближайшие дедлайны',
+    ]:
+        num = len(sessionStorage[user_id]['deadlines'])
+        if num == 0:
+            res['response']['text'] = 'У вас еще нет дедлайнов. Но их можно добавить.'
+        else:
+            result = f'У вас запланировано {num} дедлайнов. Вот ближайшие: \n'
+            deadlines = list(sessionStorage[user_id]['deadlines'])
+            for i in range(min(num, 3)):
+                result += func.return_deadline(deadlines[i])
+            res['response']['text'] = result
+        res['response']['buttons'] = back_button
         return
-    res['response']['text'] = 'Я вас не поняла. Чтобы показать расписание мне нужен твой E-mail, заканчивающийся на @edu.hse.ru'
+
+    res['response']['text'] = 'Я вас не поняла'
+
+
 
 
 stage2_buttons = \
