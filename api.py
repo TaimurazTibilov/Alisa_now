@@ -2,6 +2,9 @@
 # Импортирует поддержку UTF-8.
 from __future__ import unicode_literals
 
+import calendar
+import datetime
+
 import util_func as func
 # Импортируем модули для работы с JSON и логами.
 import json
@@ -17,8 +20,11 @@ logging.basicConfig(level=logging.DEBUG)
 # Хранилище данных о сессиях.
 sessionStorage = {}
 
+buffer = {}
+
 # id дедлайнов
-id = 0
+id = 1
+
 
 # Задаем параметры приложения Flask.
 @app.route("/", methods=['POST'])
@@ -46,16 +52,17 @@ def main():
 
 
 stage0_buttons = \
-            [
-                {
-                    "title": "Давай",
-                    "hide": True
-                },
-                {
-                    "title": "Не сегодня",
-                    "hide": True
-                }
-            ]
+    [
+        {
+            "title": "Давай",
+            "hide": True
+        },
+        {
+            "title": "Не сегодня",
+            "hide": True
+        }
+    ]
+
 
 # Функция для непосредственной обработки диалога.
 def handle_dialog(req, res):
@@ -113,44 +120,37 @@ def stage0(user_id, req, res):
         'ок',
         'хорошо',
         'ага',
+        'назад'
     ]:
         # Пользователь согласился, идем на стадию 1.
         sessionStorage[user_id]['stage'] = 1
         res['response']['text'] = 'Чем могу вам помочь?'
         res['response']['buttons'] = stage1_buttons
-        # if sessionStorage[user_id]['email']:
-        #     res['response']['buttons'] = [
-        #         {
-        #             "title": sessionStorage[user_id]['email'],
-        #             "hide": True,
-        #         }
-        #     ]
         return
 
     res['response']['text'] = 'Я вас не поняла'
     res['response']['buttons'] = stage0_buttons
-    return
 
 
 stage1_buttons = \
-            [
-                {
-                    "title": "Текущие дедлайны",
-                    "hide": True
-                },
-                {
-                    "title": "Добавить дедлайн",
-                    "hide": True
-                },
-                {
-                    "title": "Смотреть ближайшие",
-                    "hide": True
-                },
-                {
-                    "title": "Выход",
-                    "hide": True
-                },
-            ]
+    [
+        {
+            "title": "Текущие дедлайны",
+            "hide": True
+        },
+        {
+            "title": "Добавить дедлайн",
+            "hide": True
+        },
+        {
+            "title": "Смотреть ближайшие",
+            "hide": True
+        },
+        {
+            "title": "Выход",
+            "hide": True
+        },
+    ]
 
 back_button = [
     {
@@ -160,74 +160,194 @@ back_button = [
 ]
 
 
-# Getting email from user
+# Основной функционал
 def stage1(user_id, req, res):
+    # Показывает ближайшие дедлайны
     if req['request']['original_utterance'].lower() in [
         'ближайшие',
         'дедлайны',
         'ближайшие дедлайны',
         'покажи ближайшие дедлайны',
+        'смотреть ближайшие дедлайны',
+        'смотреть ближайшие'
     ]:
         num = len(sessionStorage[user_id]['deadlines'])
         if num == 0:
             res['response']['text'] = 'У вас еще нет дедлайнов. Но их можно добавить.'
         else:
-            result = f'У вас запланировано {num} дедлайнов. Вот ближайшие: \n'
+            result = f'Вот ближайшие дедлайны: \n'
             deadlines = list(sessionStorage[user_id]['deadlines'])
             for i in range(min(num, 3)):
                 result += func.return_deadline(deadlines[i])
             res['response']['text'] = result
+        sessionStorage[user_id]['stage'] = 0
         res['response']['buttons'] = back_button
+        return
+
+    # Управление всеми дедлайнами
+    elif req['request']['original_utterance'].lower() in [
+        'покажи все дедлайны',
+        'текущие дедлайны',
+        'все дедлайны',
+    ]:
+        num = len(sessionStorage[user_id]['deadlines'])
+        res['response']['text'] = f'У вас запланировано {num} дедлайнов. На какой день вы хотите посмотреть дедлайны?'
+        res['response']['buttons'] = stage2_buttons
+        sessionStorage[user_id]['stage'] = 2
+        return
+
+    # Добавление дедлайна
+    elif req['request']['original_utterance'].lower() in [
+        'добавить',
+        'добавить дедлайн',
+        'новый дедлайн',
+        'создать дедлайн',
+        'создать новый дедлайн',
+        'добавить новый дедлайн'
+    ]:
+        buffer[id] = {}
+        res['response']['text'] = f'Отлично! Начнем с названия. Какое название добавим?'
+        sessionStorage[user_id]['substage'] = 1
         return
 
     res['response']['text'] = 'Я вас не поняла'
 
 
-
-
 stage2_buttons = \
-            [
-                {
-                    "title": "А сегодня",
-                    "hide": True
-                },
-                {
-                    "title": "А завтра",
-                    "hide": True
-                },
-                {
-                    "title": "А на неделю",
-                    "hide": True
-                }
-            ]
+    [
+        {
+            "title": "На сегодня",
+            "hide": True
+        },
+        {
+            "title": "На завтра",
+            "hide": True
+        },
+        {
+            "title": "На неделю",
+            "hide": True
+        }
+    ]
 
 
 def stage2(user_id, req, res):
     if req['request']['original_utterance'].lower() in [
         'сегодня',
         'а сегодня',
+        'на сегодня'
     ]:
-        res['response']['text'] = 'Поздравляю. Пар на сегодня нет.'  # todo go to API
+        res['response']['text'] = ''
         res['response']['buttons'] = stage2_buttons[-2:]
         return
     if req['request']['original_utterance'].lower() in [
         'завтра',
         'а завтра',
+        'на завтра',
     ]:
-        res['response']['text'] = 'Поздравляю. Пар на завтра нет.'  # todo go to API
+        res['response']['text'] = 'Поздравляю. Пар на завтра нет.'
         res['response']['buttons'] = [stage2_buttons[0], stage2_buttons[2]]
         return
     if req['request']['original_utterance'].lower() in [
         'на неделю',
         'а на неделю',
     ]:
-        res['response']['text'] = 'Поздравляю. Пар на неделю нет.'  # todo go to API
+        res['response']['text'] = 'Поздравляю. Пар на неделю нет.'
         res['response']['buttons'] = stage2_buttons[:2]
         return
 
     res['response']['text'] = 'Я вас не поняла. На какие даты показать расписание?'
-    res['response']['buttons'] = stage1_buttons
+    res['response']['buttons'] = stage2_buttons
     return
+
+
+def substages(user_id, req, res):
+    if sessionStorage[user_id]['substage'] == 1:
+        buffer[id]['name'] = req['request']['original_utterance']
+        sessionStorage[user_id]['substage'] = 2
+        res['response']['text'] = 'Замечательно! Теперь укажите, на какой день назначен дедлайн?'
+        res['response']['buttons'] = [
+            {
+                'title': 'Сегодня',
+                'hide': True
+            },
+            {
+                'title': 'Завтра',
+                'hide': True
+            }
+        ]
+        return
+    elif sessionStorage[user_id]['substage'] == 2:
+        buffer[id]['date'] = date = try_parse_date(req['request']['nlu']['entities'])
+
+
+def try_parse_date(entities):
+    date = None
+    for i in entities:
+        if i["type"] == "YANDEX.DATETIME":
+            v = i["value"]
+            d = datetime.datetime.now()
+            is_relative = False
+            day = d.day
+            if "day" in v:
+                if "day_is_relative" in v and v["day_is_relative"]:
+                    is_relative = True
+                    d += datetime.timedelta(days=v["day"])
+                    day += v["day"]
+                else:
+                    day = v["day"]
+            if day < 10:
+                day = f"0{day}"
+            month = d.month
+            if "month" in v:
+                if "month_is_relative" in v and v["month_is_relative"]:
+                    is_relative = True
+                    d = add_months(d, v["month"])
+                    month += v["month"]
+                else:
+                    month = v["month"]
+            if month < 10:
+                month = f"0{month}"
+            year = d.year
+            if "year" in v:
+                if "year_is_relative" in v and v["year_is_relative"]:
+                    is_relative = True
+                    d = add_years(d, v["year"])
+                    year += v["year"]
+                else:
+                    year = v["year"]
+            if is_relative:
+                month = d.month
+                if d.month < 10:
+                    month = f"0{month}"
+                day = d.day
+                if d.day < 10:
+                    day = f"0{day}"
+                date = f"{d.year}.{month}.{day}"
+            else:
+                date = f"{year}.{month}.{day}"
+    return date
+
+
+def add_months(sourcedate, months):
+    month = sourcedate.month - 1 + months
+    year = sourcedate.year + month // 12
+    month = month % 12 + 1
+    day = min(sourcedate.day, calendar.monthrange(year, month)[1])
+    return datetime.date(year, month, day)
+
+
+from calendar import isleap
+
+
+def add_years(d, years):
+    new_year = d.year + years
+    try:
+        return d.replace(year=new_year)
+    except ValueError:
+        if (d.month == 2 and d.day == 29 and  # leap day
+                isleap(d.year) and not isleap(new_year)):
+            return d.replace(year=new_year, day=28)
+        raise
 
 
 def stage3(user_id, req, res):
