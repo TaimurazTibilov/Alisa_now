@@ -89,6 +89,9 @@ def handle_dialog(req, res):
     if sessionStorage[user_id]['stage'] == 0:
         stage0(user_id, req, res)
     elif sessionStorage[user_id]['stage'] == 1:
+        if sessionStorage[user_id]['substage'] != 0:
+            substages(user_id, req, res)
+            return
         stage1(user_id, req, res)
     elif sessionStorage[user_id]['stage'] == 2:
         stage2(user_id, req, res)
@@ -260,7 +263,37 @@ def stage2(user_id, req, res):
     return
 
 
+priotity_buttons = [
+    {
+        'title': 'Низкий',
+        'hide': True
+    },
+    {
+        'title': 'Средний',
+        'hide': True
+    },
+    {
+        'title': 'Высокий',
+        'hide': True
+    },
+]
+
+
+choice_buttons = [
+    {
+        'title': 'Да',
+        'hide': True
+    },
+    {
+        'title': 'Нет',
+        'hide': True
+    },
+]
+
+
 def substages(user_id, req, res):
+
+    global id
     if sessionStorage[user_id]['substage'] == 1:
         buffer[id]['name'] = req['request']['original_utterance']
         sessionStorage[user_id]['substage'] = 2
@@ -276,8 +309,75 @@ def substages(user_id, req, res):
             }
         ]
         return
+
     elif sessionStorage[user_id]['substage'] == 2:
-        buffer[id]['date'] = date = try_parse_date(req['request']['nlu']['entities'])
+        date = try_parse_date(req['request']['nlu']['entities'])
+        if date is not None:
+            sessionStorage[user_id]['substage'] = 3
+            buffer[id]['date'] = date
+            res['response']['text'] = 'Отлично! Осталось только выбрать приоритет задачи.'
+            res['response']['buttons'] = priotity_buttons
+            return
+
+    elif sessionStorage[user_id]['substage'] == 3:
+        if  req['request']['original_utterance'].lower() in [
+            'низкий',
+            'маленький'
+        ]:
+            buffer[id]['priority'] = 'Низкий'
+        elif req['request']['original_utterance'].lower() in [
+            'средний',
+            'обычный'
+        ]:
+            buffer[id]['priority'] = 'Средний'
+        elif req['request']['original_utterance'].lower() in [
+            'важный',
+            'большой',
+            'высокий'
+        ]:
+            buffer[id]['priority'] = 'Высокий'
+        else:
+            res['response']['text'] = 'Я вас не понимаю'
+            res['response']['buttons'] = priotity_buttons
+            return
+        sessionStorage[user_id]['substage'] = 4
+        res['response']['text'] = 'Прекрасно! Все ли верно вы заполнили?\n'
+        res['response']['text'] += func.return_deadline(buffer[id])
+        res['response']['buttons'] = choice_buttons
+        return
+
+    elif sessionStorage[user_id]['substage'] == 4:
+        if req['request']['original_utterance'].lower() in [
+            'да',
+            'все ок',
+            'ок',
+            'класс',
+            'ага',
+        ]:
+            sessionStorage[user_id]['substage'] = 0
+            sessionStorage[user_id]['stage'] = 1
+            id += 1
+            sessionStorage[user_id]['deadlines'].append(buffer[id - 1])
+
+            res['response']['text'] = 'Отлично! Чем еще я могу вам помочь?'
+            res['response']['buttons'] = stage1_buttons
+        elif req['request']['original_utterance'].lower() in [
+            'не',
+            'нет',
+            'плохо',
+            'не ок',
+            'измени',
+        ]:
+            sessionStorage[user_id]['substage'] = 1
+            res['response']['text'] = 'Давайте создадим сначала. Какое название у дедлайна?'
+        else:
+            res['responce']['text'] = 'Я вас не понимаю'
+    else:
+        res['response']['text'] = 'Произошла ошибка. Попробуем сначала. Чем могу вам помочь?'
+        sessionStorage[user_id]['stage'] = 1
+        res['response']['buttons'] = stage1_buttons
+        return
+
 
 
 def try_parse_date(entities):
