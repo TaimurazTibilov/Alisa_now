@@ -222,7 +222,7 @@ def stage1(user_id, req, res):
         for dl in sessionStorage[user_id]['deadlines']:
             res['response']['text'] += str(dl['id']) + '\n' + func.return_deadline(dl)
         res['response']['buttons'] = manage_buttons
-        sessionStorage[user_id]['stage'] = 2
+        sessionStorage[user_id]['stage'] = 3
         return
 
     # Добавление дедлайна
@@ -276,29 +276,29 @@ manage_buttons = [
 ]
 
 
-def stage2(user_id, req, res):
-    date = try_parse_date(req['request']['nlu']['entities'])
-    if date is not None:
-        deadlines = []
-        for dl in sessionStorage[user_id]['deadlines']:
-            if dl['date'] <= date:
-                deadlines.append(dl)
-        if len(deadlines) == 0:
-            res['response']['text'] = 'У вас еще нет дедлайнов, которые вы могли бы закрыть'
-            sessionStorage[user_id]['stage'] = 0
-            res['response']['buttons'] = back_button
-            return
-        result = 'Вот все дедлайны, которые вам нужно сделать до ' + str(date) + '\n'
-        for dl in deadlines:
-            result += func.return_deadline(dl)
-        sessionStorage[user_id]['stage'] = 3
-        res['response']['text'] = result + '\nХотите что-то изменить или удалить?'
-        res['response']['buttons'] = manage_buttons
-        return
-
-    res['response']['text'] = 'Я вас не поняла. На какую дату хотите увидеть расписание?'
-    res['response']['buttons'] = stage2_buttons
-    return
+# def stage2(user_id, req, res):
+#     date = try_parse_date(req['request']['nlu']['entities'])
+#     if date is not None:
+#         deadlines = []
+#         for dl in sessionStorage[user_id]['deadlines']:
+#             if dl['date'] <= date:
+#                 deadlines.append(dl)
+#         if len(deadlines) == 0:
+#             res['response']['text'] = 'У вас еще нет дедлайнов, которые вы могли бы закрыть'
+#             sessionStorage[user_id]['stage'] = 0
+#             res['response']['buttons'] = back_button
+#             return
+#         result = 'Вот все дедлайны, которые вам нужно сделать до ' + str(date) + '\n'
+#         for dl in deadlines:
+#             result += func.return_deadline(dl)
+#         sessionStorage[user_id]['stage'] = 3
+#         res['response']['text'] = result + '\nХотите что-то изменить или удалить?'
+#         res['response']['buttons'] = manage_buttons
+#         return
+#
+#     res['response']['text'] = 'Я вас не поняла. На какую дату хотите увидеть расписание?'
+#     res['response']['buttons'] = stage2_buttons
+#     return
 
 
 def stage3(user_id, req, res):
