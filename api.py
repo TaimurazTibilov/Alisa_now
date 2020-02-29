@@ -219,7 +219,7 @@ def stage1(user_id, req, res):
         num = len(sessionStorage[user_id]['deadlines'])
         res['response']['text'] = f'У вас запланировано {num} дедлайнов. \n'
         for dl in sessionStorage[user_id]['deadlines']:
-            res['response']['text'] += str(dl['id']) + '\n' + func.return_deadline(dl)
+            res['response']['text'] += func.return_deadline(dl)
         res['response']['buttons'] = manage_buttons
         sessionStorage[user_id]['stage'] = 3
         return
@@ -393,7 +393,7 @@ def edit_stages(user_id, req, res):
             if deldl is None:
                 res['response']['test'] = 'Дедлайна с таким номером не существует.'
                 return
-            res['response']['test'] = 'Что вы хотели бы изменить?'
+            res['response']['text'] = 'Что вы хотели бы изменить?'
             sessionStorage[user_id]['substage'] = 7
             res['response']['buttons'] = edit_buttons
             return
