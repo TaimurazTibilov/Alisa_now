@@ -218,9 +218,11 @@ def stage1(user_id, req, res):
         'все дедлайны',
     ]:
         num = len(sessionStorage[user_id]['deadlines'])
-        res['response']['text'] = f'У вас запланировано {num} дедлайнов. На какой день вы хотите посмотреть дедлайны?'
-        res['response']['buttons'] = stage2_buttons
-        sessionStorage[user_id]['stage'] = 2
+        res['response']['text'] = f'У вас запланировано {num} дедлайнов. \n'
+        for dl in sessionStorage[user_id]['deadlines']:
+            res['response']['text'] += func.return_deadline(dl)
+        res['response']['buttons'] = manage_buttons
+        sessionStorage[user_id]['stage'] = 3
         return
 
     # Добавление дедлайна
