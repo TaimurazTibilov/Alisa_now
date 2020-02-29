@@ -74,6 +74,7 @@ def handle_dialog(req, res):
 
         sessionStorage[user_id] = {
             'stage': 0,
+            'substage': 0,
             'user_id': user_id,
             'deadlines': []
         }
