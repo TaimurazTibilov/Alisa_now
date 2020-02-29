@@ -290,7 +290,6 @@ def stage2(user_id, req, res):
             return
         result = 'Вот все дедлайны, которые вам нужно сделать до ' + str(date) + '\n'
         for dl in deadlines:
-            result += dl['id'] + '\n'
             result += func.return_deadline(dl)
         sessionStorage[user_id]['stage'] = 3
         res['response']['text'] = result + '\nХотите что-то изменить или удалить?'
@@ -370,19 +369,12 @@ def parse_int(entities):
     return data
 
 
-def find_by_id(i, user_id):
-    for dl in sessionStorage[user_id]['deadlines']:
-        if dl['id'] == i:
-            return dl
-    return None
-
-
 def edit_stages(user_id, req, res):
     global loc_id
     if sessionStorage[user_id]['substage'] == 5:
         loc_id = parse_int(req['request']['nlu']['entities'])
         if loc_id is not None:
-            deldl = find_by_id(loc_id, user_id)
+            deldl = sessionStorage[user_id]['deadlines'][loc_id - 1]
             if deldl is None:
                 res['response']['test'] = 'Дедлайна с таким номером не существует.'
                 return
@@ -398,7 +390,7 @@ def edit_stages(user_id, req, res):
     elif sessionStorage[user_id]['substage'] == 6:
         loc_id = parse_int(req['request']['nlu']['entities'])
         if loc_id is not None:
-            deldl = find_by_id(loc_id, user_id)
+            deldl = sessionStorage[user_id]['deadlines'][loc_id - 1]
             if deldl is None:
                 res['response']['test'] = 'Дедлайна с таким номером не существует.'
                 return
